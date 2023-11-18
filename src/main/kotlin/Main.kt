@@ -1,3 +1,5 @@
+import java.util.Objects
+
 data class Post(
     val id: Int,
     val fromId: Int,
@@ -8,7 +10,13 @@ data class Post(
     val friendsOnly: Boolean,
     val markedAsAds: Boolean,
     val isPinned: Boolean,
-    val created_by: Int
+    val created_by: Int,
+    val likes: Likes = Likes(0)
+
+)
+
+data class Likes(
+    val count: Int
 )
 
 object WallService {
