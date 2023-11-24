@@ -1,3 +1,9 @@
+import java.lang.Exception
+import java.lang.RuntimeException
+import java.sql.Time
+import java.time.format.DateTimeFormatter
+import java.util.Date
+
 data class Post(
     val id: Int,
     val fromId: Int,
@@ -7,7 +13,7 @@ data class Post(
     val createdBy: Int,
     val replyOwnerId: Int,
     val replyPostId: Int,
-    val attachment: Attachment?,
+    val attachments: Attachments?,
     val postponedId: Int?,
     val postType: String,
     val signerId: Int,
@@ -36,18 +42,36 @@ data class Geo(
     val type: String
 )
 
-data class Comments(
+data class Comments( //класс, содержащий комментарии под постом
     val count: Int
 )
 
-interface Attachment{
+data class Comment( //класс, описывающий сам комментарий
+    val id: Int,
+    val fromId: Int,
+    val date: Int,
+    val text: String,
+    val replyToUser: Int? = null,
+    val replyToComment: Int? = null,
+    val attachments: Attachments? = null,
+    val thread: Thread? = null
+)
+
+data class Thread(
+    val count: Int,
+    val canPost: Boolean,
+    val showReplyButton: Boolean = true,
+    val groupsCanPost: Boolean = true
+)
+
+interface Attachments{
     val type: String
 }
 
 data class PhotoAttachment(
     override val type: String = "photo",
     val photo: Photo
-) : Attachment
+) : Attachments
 
 data class Photo (
     val id: Int,
@@ -59,7 +83,7 @@ data class Photo (
 data class VideoAttachment(
     override val type: String = "video",
     val video: Video
-):Attachment
+):Attachments
 
 data class Video(
     val id: Int,
@@ -70,7 +94,7 @@ data class Video(
 data class AudioAttachment(
     override val type: String = "audio",
     val audio: Audio
-):Attachment
+):Attachments
 
 data class Audio(
     val id: Int,
@@ -81,7 +105,7 @@ data class Audio(
 data class FileAttachment(
     override val type: String = "file",
     val file: File
-):Attachment
+):Attachments
 
 data class File(
     val id: Int,
@@ -92,7 +116,7 @@ data class File(
 data class StickerAttachment(
     override val type: String = "sticker",
     val sticker: Sticker
-): Attachment
+): Attachments
 
 data class Sticker(
     val productId: Int,
@@ -101,8 +125,24 @@ data class Sticker(
 
 )
 
+class PostNotFoundException(message: String) : RuntimeException(message)
+
 object WallService {
     private var posts = emptyArray<Post>()
+    private var comments = emptyArray<Comment>()
+
+
+    fun createComment(postId: Int, comment: Comment): Comment {
+        val post = posts.find { it.id == postId }
+        if (post != null) {
+            val commentId = if (comments.isNotEmpty()) comments.maxOf { it.id } + 1 else 1
+            val newComment = comment.copy(id = commentId)
+            comments += newComment
+            return comments.last()
+        } else {
+            throw PostNotFoundException("No post with $postId id")
+        }
+    }
 
     fun clear() {
         posts = emptyArray()
