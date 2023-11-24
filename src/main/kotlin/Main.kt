@@ -4,16 +4,39 @@ data class Post(
     val ownerId: Int,
     val text: String,
     val date: Int,
-    val canPin: Boolean,
-    val friendsOnly: Boolean,
-    val markedAsAds: Boolean,
-    val isPinned: Boolean,
-    val created_by: Int,
-    val likes: Likes = Likes(0)
-
+    val createdBy: Int,
+    val replyOwnerId: Int,
+    val replyPostId: Int,
+    val attachment: Attachment?,
+    val postponedId: Int?,
+    val postType: String,
+    val signerId: Int,
+    val comments: Comments = Comments(0),
+    val copyright: Copyright = Copyright(1),
+    val geo: Geo = Geo("Moscow"),
+    val likes: Likes = Likes(0),
+    val canPin: Boolean = true,
+    val friendsOnly: Boolean = false,
+    val markedAsAds: Boolean = false,
+    val isPinned: Boolean = false,
+    val isFavourite: Boolean = false,
+    val canEdit: Boolean = true,
+    val canDelete: Boolean = true
 )
 
 data class Likes(
+    val count: Int
+)
+
+data class Copyright(
+    val id: Int
+)
+
+data class Geo(
+    val type: String
+)
+
+data class Comments(
     val count: Int
 )
 
