@@ -3,6 +3,7 @@ import java.lang.RuntimeException
 import java.sql.Time
 import java.time.format.DateTimeFormatter
 import java.util.Date
+import java.lang.IndexOutOfBoundsException as IndexOutOfBoundsException
 
 data class Post(
     val id: Int,
@@ -28,6 +29,21 @@ data class Post(
     val isFavourite: Boolean = false,
     val canEdit: Boolean = true,
     val canDelete: Boolean = true
+)
+
+data class Note(
+    val noteId: Int,
+    val title: String,
+    val text: String,
+    val privacy: Int = 0,
+    val commentPrivacy: Int = 0,
+)
+
+data class CommentForNote(
+    val commentId: Int,
+    val message: String,
+    val noteId: Int,
+    var doesExist: Boolean = true
 )
 
 data class Likes(
@@ -75,7 +91,7 @@ data class PhotoAttachment(
 
 data class Photo (
     val id: Int,
-    val album_id: Int,
+    val albumId: Int,
     val width: Int,
     val height: Int
 )
@@ -120,12 +136,14 @@ data class StickerAttachment(
 
 data class Sticker(
     val productId: Int,
-    val stickeId: Int,
+    val stickerId: Int,
     val isAllowed: Boolean
 
 )
 
 class PostNotFoundException(message: String) : RuntimeException(message)
+class NoteNotFoundException(message: String) : RuntimeException(message)
+class CommentNotFoundException(message: String) : RuntimeException(message)
 
 object WallService {
     private var posts = emptyArray<Post>()
@@ -139,9 +157,7 @@ object WallService {
             val newComment = comment.copy(id = commentId)
             comments += newComment
             return comments.last()
-        } else {
-            throw PostNotFoundException("No post with $postId id")
-        }
+        } else throw PostNotFoundException("No post with $postId id")
     }
 
     fun clear() {
@@ -164,5 +180,116 @@ object WallService {
             }
         }
         return false
+    }
+}
+
+object NoteService {
+    private var notes = mutableListOf<Note>()
+    private var commentsForNote = mutableListOf<CommentForNote>()
+
+    fun clear() {
+        notes.clear()
+    }
+
+    fun add(note: Note): Note {
+        val confirmedNoteId = if (notes.isNotEmpty()) notes.maxOf { it.noteId } + 1 else 1
+        val newNote = note.copy(noteId = confirmedNoteId)
+        notes.add(newNote)
+        return notes.last()
+    }
+
+    fun delete(noteId: Int): Boolean {
+        val note = notes.find { it.noteId == noteId }
+        if (note != null) {
+            println("Заметка $noteId удалена")
+            notes.remove(note)
+            commentsForNote.removeAt(note.noteId)
+            return true
+        } else throw NoteNotFoundException("No note with $noteId id")
+    }
+
+    fun edit(note: Note): Boolean {
+        for ((index, existingNote) in notes.withIndex()) {
+            if (note.noteId == existingNote.noteId) {
+                notes[index] = note
+                return true
+            }
+        }
+        return false
+    }
+
+    fun get(): List<Note> {
+        return notes
+    }
+
+    fun getById(noteId: Int): Note {
+        val noteWeNeed = notes.find { it.noteId == noteId }
+        if (noteWeNeed != null) {
+            return noteWeNeed
+        } else throw NoteNotFoundException("No note with $noteId id")
+    }
+
+    fun getFriendsNotes(): List<Note> {
+        return notes.filter { it.privacy == 1 }
+    }
+
+    fun createComment(noteId: Int, commentForNote: CommentForNote): CommentForNote {
+        val note = notes.find { it.noteId == noteId }
+        if (note != null) {
+            val commentId = if (commentsForNote.isNotEmpty()) commentsForNote.maxOf { it.commentId } + 1 else 1
+            val noteId = note.noteId
+            val newComment = commentForNote.copy(commentId = commentId, noteId = noteId)
+            commentsForNote.add(newComment)
+            return commentsForNote.last()
+        } else throw NoteNotFoundException("No note with $noteId id")
+    }
+
+    fun deleteComment(noteId: Int, commentId: Int): Boolean {
+        val note = notes.find { it.noteId == noteId }
+        if (note != null) {
+            val commentForNote = commentsForNote.find { it.commentId == commentId }
+            if (commentForNote != null && commentForNote.doesExist) {
+                commentForNote.doesExist = false
+                println("Комментарий $commentId удален")
+                return true
+            } else throw CommentNotFoundException("Comment $commentId doesn't exist")
+        } else throw NoteNotFoundException("Note $noteId doesn't exist")
+    }
+
+    fun editComment(commentForNote: CommentForNote): Boolean {
+        for ((index, existingComment) in commentsForNote.withIndex()) {
+            try {
+               if (commentForNote.commentId == existingComment.noteId && commentForNote.doesExist) {
+                    commentsForNote[index] = commentForNote
+                    return true
+                }
+            } catch (e: IndexOutOfBoundsException){
+                println("Что-то пошло не так")
+                continue
+            }
+        }
+        return false
+    }
+
+    fun restoreComment(noteId: Int, commentId: Int): Boolean {
+        try {
+
+            val note = notes.find { it.noteId == noteId }
+            if (note != null) {
+                val commentForNote = commentsForNote.find { it.commentId == commentId }
+                if (commentForNote != null && !commentForNote.doesExist) {
+                    commentForNote.doesExist = true
+                    println("Комментарий $commentId восстановлен")
+                    return true
+                } else throw CommentNotFoundException("Comment $commentId doesn't exist")
+            }
+        } catch (e: IndexOutOfBoundsException){
+            println("Что-то пошло не так")
+        }
+        return false
+    }
+
+    fun getComments(noteId: Int): List<CommentForNote>{
+        return commentsForNote.filter { it.noteId == noteId && it.doesExist}
     }
 }
