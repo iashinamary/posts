@@ -144,15 +144,16 @@ class NoteServiceTest{
         assertEquals(false, result)
     }
 
-    @Test(expected = IndexOutOfBoundsException::class)
+    @Test
     fun editCommentWhenNoteDeleted(){
         val note1 = NoteService.add(Note(1, "Note", "Do that"))
         val commentForNote1 = CommentForNote(1, "No", note1.noteId)
         with(NoteService) {
             createComment(note1.noteId, commentForNote1)
             delete(note1.noteId)
-            editComment(CommentForNote(1, "Yes", note1.noteId))
         }
+        val result = NoteService.editComment(CommentForNote(1, "Yes", note1.noteId))
+        assertEquals(false, result)
 
     }
 
@@ -177,7 +178,7 @@ class NoteServiceTest{
         NoteService.restoreComment(note1.noteId, commentForNote1.commentId)
     }
 
-    @Test(expected = IndexOutOfBoundsException::class)
+    @Test
     fun restoreCommentWhenNoteDeleted(){
         val note1 = NoteService.add(Note(1, "Note", "Do that"))
         val note2 = NoteService.add(Note(2, "Note", "Do this"))
@@ -186,8 +187,9 @@ class NoteServiceTest{
             createComment(note1.noteId, commentForNote1)
             deleteComment(note1.noteId, commentForNote1.commentId)
             delete(note1.noteId)
-            restoreComment(note1.noteId, commentForNote1.commentId)
         }
+        val result = NoteService.restoreComment(note1.noteId, commentForNote1.commentId)
+        assertEquals(false, result)
     }
 
     @Test

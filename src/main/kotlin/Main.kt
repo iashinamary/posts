@@ -189,6 +189,7 @@ object NoteService {
 
     fun clear() {
         notes.clear()
+        commentsForNote.clear()
     }
 
     fun add(note: Note): Note {
@@ -203,7 +204,7 @@ object NoteService {
         if (note != null) {
             println("Заметка $noteId удалена")
             notes.remove(note)
-            commentsForNote.removeAt(note.noteId)
+            commentsForNote = commentsForNote.filter { it.noteId != noteId }.toMutableList()
             return true
         } else throw NoteNotFoundException("No note with $noteId id")
     }
@@ -258,21 +259,16 @@ object NoteService {
 
     fun editComment(commentForNote: CommentForNote): Boolean {
         for ((index, existingComment) in commentsForNote.withIndex()) {
-            try {
-               if (commentForNote.commentId == existingComment.noteId && commentForNote.doesExist) {
-                    commentsForNote[index] = commentForNote
-                    return true
-                }
-            } catch (e: IndexOutOfBoundsException){
-                println("Что-то пошло не так")
-                continue
+            if (commentForNote.commentId == existingComment.noteId && commentForNote.doesExist) {
+                commentsForNote[index] = commentForNote
+                return true
             }
+
         }
         return false
     }
 
     fun restoreComment(noteId: Int, commentId: Int): Boolean {
-        try {
 
             val note = notes.find { it.noteId == noteId }
             if (note != null) {
@@ -283,9 +279,6 @@ object NoteService {
                     return true
                 } else throw CommentNotFoundException("Comment $commentId doesn't exist")
             }
-        } catch (e: IndexOutOfBoundsException){
-            println("Что-то пошло не так")
-        }
         return false
     }
 
