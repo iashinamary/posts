@@ -3,7 +3,21 @@ import java.lang.RuntimeException
 import java.sql.Time
 import java.time.format.DateTimeFormatter
 import java.util.Date
+import javax.sound.midi.Receiver
 import java.lang.IndexOutOfBoundsException as IndexOutOfBoundsException
+
+data class Chat(
+    val chatWithId: Int,
+    val messages: List<Message>,
+    var chatIsRead: Boolean = true
+)
+data class Message(
+    val messageToId: Int,
+    val messageId: Int,
+    val messageFrom: Int,
+    val text: String,
+    var isRead: Boolean = false
+)
 
 data class Post(
     val id: Int,
@@ -144,6 +158,9 @@ data class Sticker(
 class PostNotFoundException(message: String) : RuntimeException(message)
 class NoteNotFoundException(message: String) : RuntimeException(message)
 class CommentNotFoundException(message: String) : RuntimeException(message)
+class MessageNotFoundException(message: String) : RuntimeException(message)
+class ChatNotFoundException(message: String) : RuntimeException(message)
+class ChatAlreadyExistsException(message: String) : RuntimeException(message)
 
 object WallService {
     private var posts = emptyArray<Post>()
@@ -286,3 +303,108 @@ object NoteService {
         return commentsForNote.filter { it.noteId == noteId && it.doesExist}
     }
 }
+
+object ChatService {
+    private var messages = mutableListOf<Message>()
+    var chats = mutableListOf<Chat>()
+
+    fun clear() {
+        messages.clear()
+        chats.clear()
+    }
+
+    fun createMessage(message: Message): Message {
+
+        val newMessageId = if (messages.isNotEmpty()) messages.maxOf { it.messageId } + 1 else 1
+        val chatWith = chats.find { it.chatWithId == message.messageToId }
+        if (chatWith != null) {
+            chatWith.messages.plus(message)
+            checkForUnread(message)
+        } else {
+            createChat(message)
+            checkForUnread(message)
+        }
+        val newMessage = message.copy(messageId = newMessageId)
+        messages.add(newMessage)
+        return messages.last()
+    }
+
+    fun checkForUnread(message: Message){
+        if (!message.isRead){
+            val unreadChat = chats.find {  it.chatWithId == message.messageToId  }
+            if (unreadChat != null) {
+                unreadChat.chatIsRead = false
+            }
+        }
+        if (message.isRead){
+            val unreadChat = chats.find {  it.chatWithId == message.messageToId  }
+            if (unreadChat != null) {
+                unreadChat.chatIsRead = true
+            }
+        }
+    }
+
+    fun createChat(message: Message): Chat {
+        val newChat = Chat(message.messageToId, messages)
+        chats.add(newChat)
+        return newChat
+    }
+
+    fun deleteChat(chatWithId: Int): Boolean {
+        val chatToDelete = chats.find { it.chatWithId == chatWithId }
+        if (chatToDelete != null) {
+            chats.remove(chatToDelete)
+            val messagesFromChat = messages.find { it.messageToId == chatWithId }
+            messages.remove(messagesFromChat)
+            return true
+        } else throw ChatNotFoundException(("No chat with $chatWithId id"))
+    }
+
+    fun deleteMessage(messageToId: Int, messageId: Int): Boolean {
+        val messageToDelete = messages.find { it.messageToId == messageToId && it.messageId == messageId }
+        if (messageToDelete != null) {
+            messages.remove(messageToDelete)
+            return true
+        } else throw MessageNotFoundException("No message with $messageId id")
+    }
+
+    fun editMessage(message: Message): Boolean {
+        for ((index, existingMessage) in messages.withIndex()) {
+            if (message.messageId == existingMessage.messageId) {
+                messages[index] = message
+                return true
+            }
+        }
+        return false
+    }
+
+    fun getAllChats(): List<Chat>{
+        return chats
+    }
+    fun getUnreadChatsCount(): List<Chat> {
+        return chats.filter { !it.chatIsRead }
+    }
+
+    fun getLastMessages(): List<String> {
+        return chats.map { chat ->
+            chat.messages.lastOrNull()?.text ?: "нет сообщений"
+        }
+    }
+
+    fun getMessagesFromId(id: Int): List<Message>{
+        return messages.filter { it.messageFrom == id }
+    }
+
+    fun getSeveralMessages(id: Int, count: Int): List<Message>{
+       val lastMessagesOfCount = getMessagesFromId(id).takeLast(count)
+        lastMessagesOfCount.forEach { message -> message.isRead = true }
+        val readChat = chats.find { it.chatWithId == id }
+        if (readChat != null) {
+            readChat.chatIsRead = true
+        }
+        return lastMessagesOfCount
+    }
+}
+
+
+
