@@ -368,15 +368,13 @@ object ChatService {
         } else throw MessageNotFoundException("No message with $messageId id")
     }
 
-    fun editMessage(message: Message): Boolean {
-        for ((index, existingMessage) in messages.withIndex()) {
-            if (message.messageId == existingMessage.messageId) {
-                messages[index] = message
-                return true
-            }
-        }
-        return false
-    }
+    fun editMessage(message: Message): Boolean =
+        messages.indexOfFirst { it.messageId == message.messageId }
+            .takeIf { it != -1 }
+            ?.let {
+                messages[it] = message
+                true
+            } ?: false
 
     fun getAllChats(): List<Chat>{
         return chats
@@ -395,15 +393,15 @@ object ChatService {
         return messages.filter { it.messageFrom == id }
     }
 
-    fun getSeveralMessages(id: Int, count: Int): List<Message>{
-       val lastMessagesOfCount = getMessagesFromId(id).takeLast(count)
-        lastMessagesOfCount.forEach { message -> message.isRead = true }
-        val readChat = chats.find { it.chatWithId == id }
-        if (readChat != null) {
-            readChat.chatIsRead = true
-        }
-        return lastMessagesOfCount
-    }
+    fun getSeveralMessages(id: Int, count: Int): List<Message> =
+        getMessagesFromId(id)
+            .asReversed().take(count)
+            .takeLast(count)
+            .onEach { it.isRead = true }
+            .also {
+                chats.find { chat -> chat.chatWithId == id }
+                    ?.chatIsRead = true
+            }
 }
 
 
