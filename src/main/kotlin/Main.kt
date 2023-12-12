@@ -329,15 +329,15 @@ object ChatService {
         return messages.last()
     }
 
-    fun checkForUnread(message: Message){
-        if (!message.isRead){
-            val unreadChat = chats.find {  it.chatWithId == message.messageToId  }
+    fun checkForUnread(message: Message) {
+        if (!message.isRead) {
+            val unreadChat = chats.find { it.chatWithId == message.messageToId }
             if (unreadChat != null) {
                 unreadChat.chatIsRead = false
             }
         }
-        if (message.isRead){
-            val unreadChat = chats.find {  it.chatWithId == message.messageToId  }
+        if (message.isRead) {
+            val unreadChat = chats.find { it.chatWithId == message.messageToId }
             if (unreadChat != null) {
                 unreadChat.chatIsRead = true
             }
@@ -357,16 +357,24 @@ object ChatService {
             val messagesFromChat = messages.find { it.messageToId == chatWithId }
             messages.remove(messagesFromChat)
             return true
-        } else throw ChatNotFoundException(("No chat with $chatWithId id"))
+        } else throw ChatNotFoundException("No chat with $chatWithId id")
     }
 
     fun deleteMessage(messageToId: Int, messageId: Int): Boolean {
         val messageToDelete = messages.find { it.messageToId == messageToId && it.messageId == messageId }
-        if (messageToDelete != null) {
-            messages.remove(messageToDelete)
-            return true
-        } else throw MessageNotFoundException("No message with $messageId id")
+            ?: throw MessageNotFoundException("No message with $messageId id")
+        messages.remove(messageToDelete)
+        return true
     }
+
+
+//    fun deleteMessage(messageToId: Int, messageId: Int): Boolean {
+//        val messageToDelete = messages.find { it.messageToId == messageToId && it.messageId == messageId }
+//        if (messageToDelete != null) {
+//            messages.remove(messageToDelete)
+//            return true
+//        } else throw MessageNotFoundException("No message with $messageId id")
+//    }
 
     fun editMessage(message: Message): Boolean =
         messages.indexOfFirst { it.messageId == message.messageId }
@@ -376,33 +384,60 @@ object ChatService {
                 true
             } ?: false
 
-    fun getAllChats(): List<Chat>{
+    fun getAllChats(): List<Chat> {
         return chats
     }
+
     fun getUnreadChatsCount(): List<Chat> {
         return chats.filter { !it.chatIsRead }
     }
 
-    fun getLastMessages(): List<String> {
-        return chats.map { chat ->
-            chat.messages.lastOrNull()?.text ?: "нет сообщений"
-        }
-    }
 
-    fun getMessagesFromId(id: Int): List<Message>{
-        return messages.filter { it.messageFrom == id }
-    }
+    fun getLastMessages(): List<Message> {
+        return chats.asSequence()
+            .map { chat -> chat.messages.lastOrNull() ?: Message(0, 0, 0,"нет сообщений") }
+            .toList()
+}
+
+    fun getMessagesFromId(id: Int): List<Message> =
+        messages.filter { it.messageFrom == id }
+            .asSequence()
+            .ifEmpty { throw MessageNotFoundException("нет сообщений от $id ") }
+            .toList()
+            .also {
+                chats.find { chat -> chat.chatWithId == id }
+                    ?.chatIsRead = true
+            }
+
+//    fun getMessagesFromId(id: Int): List<Message> =
+//        messages.filter { it.messageFrom == id }
+//            .also { chats.find { chat -> chat.chatWithId == id }
+//                ?.chatIsRead = true
+//            }
 
     fun getSeveralMessages(id: Int, count: Int): List<Message> =
-        getMessagesFromId(id)
-            .asReversed().take(count)
-            .takeLast(count)
-            .onEach { it.isRead = true }
+        chats.singleOrNull { it.chatWithId == id }
+            .let { it?.messages ?: throw ChatNotFoundException("нет такого чата") }
+            .asSequence()
+            .take(count)
+            .ifEmpty { throw MessageNotFoundException("нет сообщений") }
+            .toList()
             .also {
                 chats.find { chat -> chat.chatWithId == id }
                     ?.chatIsRead = true
             }
 }
+
+//    fun getSeveralMessages(id: Int, count: Int): List<Message> =
+//        getMessagesFromId(id)
+//            .asReversed().take(count)
+//            .takeLast(count)
+//            .onEach { it.isRead = true }
+//            .also {
+//                chats.find { chat -> chat.chatWithId == id }
+//                    ?.chatIsRead = true
+//            }
+
 
 
 

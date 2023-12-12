@@ -183,7 +183,7 @@ class ChatServiceTest {
             deleteMessage(SashaId, msgToSasha.messageId)
         }
         val result = ChatService.getLastMessages()
-        assertEquals(true, result.contains("нет сообщений"))
+        assertEquals(true, result.contains(Message(0,0,0,"нет сообщений")))
     }
 
     @Test
